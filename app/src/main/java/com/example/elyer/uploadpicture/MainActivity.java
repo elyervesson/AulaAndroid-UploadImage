@@ -1,11 +1,18 @@
 package com.example.elyer.uploadpicture;
 
-import org.apache.http;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpConnectionParams;
 import org.apache.http.params.HttpParams;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
@@ -17,8 +24,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
@@ -26,7 +37,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int RESULT_LOAD_IMAGE = 1;
     private static final String SERVER_ADRESS = "http://elyervessontest.netne.net";
 
-    ImageView imageToUpload, imageToDownlad;
+    ImageView imageToUpload, downloadedImage;
     Button bUploadImage, bDonwloadImage;
     EditText uploadImageName, downloadImageName;
 
@@ -36,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         setContentView(R.layout.activity_main);
 
         imageToUpload = (ImageView) findViewById(R.id.imageToUpload);
-        imageToDownlad = (ImageView) findViewById(R.id.imageToDownload);
+        downloadedImage = (ImageView) findViewById(R.id.imageToDownload);
 
         bUploadImage = (Button) findViewById(R.id.bUploadImage);
         bDonwloadImage = (Button) findViewById(R.id.bDownloadImage);
@@ -47,7 +58,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //Listeners Upload
         imageToUpload.setOnClickListener(this);
         bUploadImage.setOnClickListener(this);
-        uploadImageName.setOnClickListener(this);
+        bDonwloadImage.setOnClickListener(this);
     }
 
     @Override
@@ -61,7 +72,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Bitmap image = ((BitmapDrawable) imageToUpload.getDrawable()).getBitmap();
                 new UploadImage(image, uploadImageName.getText().toString()).execute();
                 break;
-            case R.id.etUploadName:
+            case R.id.bDownloadImage:
+                new DownloadImage(downloadImageName.getText().toString()).execute();
                 break;
         }
     }
@@ -101,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             HttpParams httpRequestParams = getHttpRequestParams();
 
             HttpClient client = new DefaultHttpClient(httpRequestParams);
-            HttpPost post = new HttpPost(SERVER_ADRESS + SavePicture.php);
+            HttpPost post = new HttpPost(SERVER_ADRESS + "/SavePicture.php");
 
             try{
                 post.setEntity(new UrlEncodedFormEntity(dataToSend));
@@ -116,6 +128,41 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
+            Toast.makeText(getApplicationContext(), "Image Uploaded", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private class DownloadImage extends AsyncTask<Void, Void, Bitmap> {
+
+        String name;
+        public DownloadImage(String name) {
+            this.name = name;
+        }
+
+        @Override
+        protected Bitmap doInBackground(Void... params) {
+            String url = SERVER_ADRESS + "/pictures/" + name + ".JPG";
+
+            try {
+                URLConnection connection = new URL(url).openConnection();
+                connection.setConnectTimeout(1000 * 30);
+                connection.setReadTimeout(1000 * 30);
+
+                return BitmapFactory.decodeStream((InputStream) connection.getContent(), null, null);
+
+            }catch(Exception e){
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            super.onPostExecute(bitmap);
+
+            if (bitmap != null) {
+                downloadedImage.setImageBitmap(bitmap);
+            }
         }
     }
 
